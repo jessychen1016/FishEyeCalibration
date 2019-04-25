@@ -5,6 +5,7 @@
 #include <iostream>
 #include <opencv2/opencv.hpp>
 #include <string>
+#include "time.h"
 
 const int BOARDWIDTH = 9;
 const int BOARDHEIGHT = 6;
@@ -142,10 +143,13 @@ int main(int argc, char** argv)
         new_intrinsic_mat.at<double>(1, 2) = 0.5 * temp.rows;
         cout<<new_intrinsic_mat<<endl;
         cout<< view.type()<< endl;
+		auto start_time = clock();
         fisheye::undistortImage(temp, view, cameraMatrix, distCoeffs,new_intrinsic_mat);
-        namedWindow("undist", CV_WINDOW_NORMAL);
-        imshow("undist", view);
-        waitKey(0);
+        auto end_time = clock();
+        cout << "time in While  " << 1000.000*(end_time - start_time) / CLOCKS_PER_SEC << endl<< endl;
+        // namedWindow("undist", CV_WINDOW_NORMAL);
+        // imshow("undist", view);
+        // waitKey(0);
     }
     
     return 0;
