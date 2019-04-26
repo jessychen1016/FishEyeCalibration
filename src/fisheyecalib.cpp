@@ -150,6 +150,8 @@ int main(int argc, char** argv)
         // namedWindow("undist", CV_WINDOW_NORMAL);
         // imshow("undist", view);
         // waitKey(0);
+        // haha
+        
     }
     
     return 0;
