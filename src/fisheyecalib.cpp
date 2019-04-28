@@ -143,8 +143,14 @@ int main(int argc, char** argv)
         new_intrinsic_mat.at<double>(1, 2) = 0.5 * temp.rows;
         cout<<new_intrinsic_mat<<endl;
         cout<< view.type()<< endl;
-		auto start_time = clock();
-        fisheye::undistortImage(temp, view, cameraMatrix, distCoeffs,new_intrinsic_mat);
+        cv::Mat map1, map2;
+
+        Size size =  temp.size();
+        fisheye::initUndistortRectifyMap(cameraMatrix, distCoeffs, cv::Matx33d::eye(), new_intrinsic_mat, size, CV_16SC2, map1, map2 );
+        
+        auto start_time = clock();
+        cv::remap(temp, view, map1, map2, INTER_LINEAR, BORDER_CONSTANT);
+        // fisheye::undistortImage(temp, view, cameraMatrix, distCoeffs,new_intrinsic_mat);
         auto end_time = clock();
         cout << "time in While  " << 1000.000*(end_time - start_time) / CLOCKS_PER_SEC << endl<< endl;
         // namedWindow("undist", CV_WINDOW_NORMAL);

@@ -262,7 +262,7 @@ void CaptureThread::run() {
     if (affinity!=0) {
       affinity->demandCore(camId);
     }
-
+    int remap_flag =1;
     while(true) {
       if (rb!=0) {
         int idx=rb->curWrite();
@@ -274,8 +274,16 @@ void CaptureThread::run() {
         if ((capture != nullptr) && (capture->isCapturing())) {
           RawImage pic_raw=capture->getFrame();
           d->time=pic_raw.getTime();
-          bool bSuccess = capture->copyAndConvertFrame( pic_raw,d->video);
-          capture_mutex.unlock();
+          if (remap_flag ==1 ){
+            bool bSuccess = capture->copyAndConvertFrame( pic_raw,d->video, true);
+            capture_mutex.unlock();
+            remap_flag+=1;
+          }
+          if (remap_flag >1){
+            bool bSuccess = capture->copyAndConvertFrame( pic_raw,d->video, false);
+            capture_mutex.unlock();
+          }
+          
 
           if (bSuccess) {           //only on a good frame read do we proceed
               counter->count();

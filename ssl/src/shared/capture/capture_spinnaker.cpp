@@ -335,50 +335,110 @@ bool CaptureSpinnaker::startCapture()
   return true;
 }
 
-bool CaptureSpinnaker::copyAndConvertFrame(const RawImage & src, RawImage & target)
+bool CaptureSpinnaker::copyAndConvertFrame(const RawImage & src, RawImage & target, bool remap_flag)
 {
-    mutex.lock();
+    
 
-  ColorFormat src_color = Colors::stringToColorFormat(v_capture_mode->getSelection().c_str());
-  ColorFormat out_color = Colors::stringToColorFormat(v_convert_to_mode->getSelection().c_str());
-  if(src_color == out_color) {
-    target.ensure_allocation(out_color, src.getWidth(), src.getHeight());
-    cv::Mat srcMat(src.getHeight(), src.getWidth(), CV_8UC3, src.getData());
-    // cv::Mat midMat(target.getHeight(), target.getWidth(), CV_8UC3, target.getData());
-    cv::Mat dstMat(target.getHeight(), target.getWidth(), CV_8UC3, target.getData());
-    cv::Mat intrinsic_mat(this->cameraMatrix), new_intrinsic_mat;
-    intrinsic_mat.copyTo(new_intrinsic_mat);
-    new_intrinsic_mat.at<double>(0, 0) *= 0.5;
-    new_intrinsic_mat.at<double>(1, 1) *= 0.5;
-    new_intrinsic_mat.at<double>(0, 2) = 0.5 * srcMat.cols;
-    new_intrinsic_mat.at<double>(1, 2) = 0.5 * srcMat.rows;
-    cv::fisheye::undistortImage(srcMat, dstMat, this->cameraMatrix, this->distCoeffs,new_intrinsic_mat);
-    cout << "markdebug222 : dstMat : " << dstMat.rows << ' ' << dstMat.cols << endl;
-    // target = src;
-  } else if(src_color == COLOR_RAW8 && out_color == COLOR_RGB8) {
-    target.ensure_allocation(out_color, src.getWidth(), src.getHeight());
-    cv::Mat srcMat(src.getHeight(), src.getWidth(), CV_8UC1, src.getData());
-    // cv::Mat midMat(target.getHeight(), target.getWidth(), CV_8UC3, target.getData());
-    cv::Mat midMat = srcMat.clone();
-    cv::Mat dstMat(target.getHeight(), target.getWidth(), CV_8UC3, target.getData());
-    cv::Mat intrinsic_mat(this->cameraMatrix), new_intrinsic_mat;
-    intrinsic_mat.copyTo(new_intrinsic_mat);
-    new_intrinsic_mat.at<double>(0, 0) *= 0.5;
-    new_intrinsic_mat.at<double>(1, 1) *= 0.5;
-    new_intrinsic_mat.at<double>(0, 2) = 0.5 * srcMat.cols; 
-    new_intrinsic_mat.at<double>(1, 2) = 0.5 * srcMat.rows;
-    cv::fisheye::undistortImage(srcMat, midMat, this->cameraMatrix, this->distCoeffs,new_intrinsic_mat);
-    cvtColor(midMat, dstMat, cv::COLOR_BayerBG2RGB);
-  } else {
-    fprintf(stderr, "Invalid conversion from %s to %s\n",
-            v_capture_mode->getSelection().c_str(), v_convert_to_mode->getSelection().c_str());
-    mutex.unlock();
-    return false;
+  if (remap_flag) {
+      mutex.lock();
+
+      ColorFormat src_color = Colors::stringToColorFormat(v_capture_mode->getSelection().c_str());
+      ColorFormat out_color = Colors::stringToColorFormat(v_convert_to_mode->getSelection().c_str());
+      if(src_color == out_color) {
+        // target.ensure_allocation(out_color, src.getWidth(), src.getHeight());
+        // cv::Mat srcMat(src.getHeight(), src.getWidth(), CV_8UC3, src.getData());
+        // // cv::Mat midMat(target.getHeight(), target.getWidth(), CV_8UC3, target.getData());
+        // cv::Mat dstMat(target.getHeight(), target.getWidth(), CV_8UC3, target.getData());
+        // cv::Mat intrinsic_mat(this->cameraMatrix), new_intrinsic_mat;
+        // intrinsic_mat.copyTo(new_intrinsic_mat);
+        // new_intrinsic_mat.at<double>(0, 0) *= 0.5;
+        // new_intrinsic_mat.at<double>(1, 1) *= 0.5;
+        // new_intrinsic_mat.at<double>(0, 2) = 0.5 * srcMat.cols;
+        // new_intrinsic_mat.at<double>(1, 2) = 0.5 * srcMat.rows;
+        // cv::fisheye::undistortImage(srcMat, dstMat, this->cameraMatrix, this->distCoeffs,new_intrinsic_mat);
+        // cout << "markdebug222 : dstMat : " << dstMat.rows << ' ' << dstMat.cols << endl;
+        target = src;
+      } else if(src_color == COLOR_RAW8 && out_color == COLOR_RGB8) {
+    
+    
+        target.ensure_allocation(out_color, src.getWidth(), src.getHeight());
+        cv::Mat srcMat(src.getHeight(), src.getWidth(), CV_8UC1, src.getData());
+        // cv::Mat midMat(target.getHeight(), target.getWidth(), CV_8UC3, target.getData());
+        cv::Mat midMat = srcMat.clone();
+        cv::Mat dstMat(target.getHeight(), target.getWidth(), CV_8UC3, target.getData());
+        // cv::Mat intrinsic_mat(this->cameraMatrix), new_intrinsic_mat;
+        this->intrinsic_mat.copyTo(this->new_intrinsic_mat);
+        this->new_intrinsic_mat.at<double>(0, 0) *= 0.5;
+        this->new_intrinsic_mat.at<double>(1, 1) *= 0.5;
+        this->new_intrinsic_mat.at<double>(0, 2) = 0.5 * srcMat.cols; 
+        this->new_intrinsic_mat.at<double>(1, 2) = 0.5 * srcMat.rows;
+        this->size =  srcMat.size();
+        fisheye::initUndistortRectifyMap(this->cameraMatrix, this->distCoeffs, cv::Matx33d::eye(), this->new_intrinsic_mat, this->size, CV_16SC2, this->map1, this->map2 );
+
+        cv::fisheye::undistortImage(srcMat, midMat, this->cameraMatrix, this->distCoeffs,new_intrinsic_mat);
+        cvtColor(midMat, dstMat, cv::COLOR_BayerBG2RGB);
+      } else {
+        fprintf(stderr, "Invalid conversion from %s to %s\n",
+                v_capture_mode->getSelection().c_str(), v_convert_to_mode->getSelection().c_str());
+        mutex.unlock();
+        return false;
+      }
+    
+        mutex.unlock();
+    
+      return true;
   }
 
-    mutex.unlock();
+  else{
+    mutex.lock();
+  
+    ColorFormat src_color = Colors::stringToColorFormat(v_capture_mode->getSelection().c_str());
+    ColorFormat out_color = Colors::stringToColorFormat(v_convert_to_mode->getSelection().c_str());
+    if(src_color == out_color) {
+      // target.ensure_allocation(out_color, src.getWidth(), src.getHeight());
+      // cv::Mat srcMat(src.getHeight(), src.getWidth(), CV_8UC3, src.getData());
+      // // cv::Mat midMat(target.getHeight(), target.getWidth(), CV_8UC3, target.getData());
+      // cv::Mat dstMat(target.getHeight(), target.getWidth(), CV_8UC3, target.getData());
+      // cv::Mat intrinsic_mat(this->cameraMatrix), new_intrinsic_mat;
+      // intrinsic_mat.copyTo(new_intrinsic_mat);
+      // new_intrinsic_mat.at<double>(0, 0) *= 0.5;
+      // new_intrinsic_mat.at<double>(1, 1) *= 0.5;
+      // new_intrinsic_mat.at<double>(0, 2) = 0.5 * srcMat.cols;
+      // new_intrinsic_mat.at<double>(1, 2) = 0.5 * srcMat.rows;
+      // cv::fisheye::undistortImage(srcMat, dstMat, this->cameraMatrix, this->distCoeffs,new_intrinsic_mat);
+      // cout << "markdebug222 : dstMat : " << dstMat.rows << ' ' << dstMat.cols << endl;
+      target = src;
+    } else if(src_color == COLOR_RAW8 && out_color == COLOR_RGB8) {
+  
+  
+      target.ensure_allocation(out_color, src.getWidth(), src.getHeight());
+      cv::Mat srcMat(src.getHeight(), src.getWidth(), CV_8UC1, src.getData());
+      // cv::Mat midMat(target.getHeight(), target.getWidth(), CV_8UC3, target.getData());
+      cv::Mat midMat = srcMat.clone();
+      cv::Mat dstMat(target.getHeight(), target.getWidth(), CV_8UC3, target.getData());
+      // cv::Mat intrinsic_mat(this->cameraMatrix), new_intrinsic_mat;
+      // intrinsic_mat.copyTo(new_intrinsic_mat);
+      // new_intrinsic_mat.at<double>(0, 0) *= 0.5;
+      // new_intrinsic_mat.at<double>(1, 1) *= 0.5;
+      // new_intrinsic_mat.at<double>(0, 2) = 0.5 * srcMat.cols; 
+      // new_intrinsic_mat.at<double>(1, 2) = 0.5 * srcMat.rows;
+      // cv::fisheye::undistortImage(srcMat, midMat, this->cameraMatrix, this->distCoeffs, this->new_intrinsic_mat);
+      cv::remap(srcMat, midMat, this->map1, this->map2, INTER_LINEAR, BORDER_CONSTANT);
 
-  return true;
+      cvtColor(midMat, dstMat, cv::COLOR_BayerBG2RGB);
+    } else {
+      fprintf(stderr, "Invalid conversion from %s to %s\n",
+              v_capture_mode->getSelection().c_str(), v_convert_to_mode->getSelection().c_str());
+      mutex.unlock();
+      return false;
+    }
+  
+      mutex.unlock();
+  
+    return true;
+  
+  }
+
 }
 
 RawImage CaptureSpinnaker::getFrame()

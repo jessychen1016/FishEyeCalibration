@@ -98,6 +98,13 @@ protected:
                            0, 0, 1);
   cv::Vec4d distCoeffs = cv::Vec4d(0.124373, -0.0160156, -0.0120572, 0.00395243);
 
+  cv::Mat intrinsic_mat(cameraMatrix), new_intrinsic_mat;
+
+  cv::Mat map1;
+  cv::Mat map2;
+
+  Size size;
+
 public:
   explicit CaptureSpinnaker(VarList * _settings = nullptr, int default_camera_id = 0, QObject * parent = nullptr);
   void mvc_connect(VarList * group);
@@ -128,7 +135,7 @@ public:
 
   void writeAllParameterValues();
 
-  bool copyAndConvertFrame(const RawImage & src, RawImage & target) override;
+  bool copyAndConvertFrame(const RawImage & src, RawImage & target, bool remap_flag = true) override;
 
   string getCaptureMethodName() const override;
 
