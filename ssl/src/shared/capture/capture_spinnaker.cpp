@@ -335,11 +335,12 @@ bool CaptureSpinnaker::startCapture()
   return true;
 }
 
-bool CaptureSpinnaker::copyAndConvertFrame(const RawImage & src, RawImage & target, bool remap_flag)
+bool CaptureSpinnaker::copyAndConvertFrame(const RawImage & src, RawImage & target)
 {
     
-
-  if (remap_flag) {
+  static bool started = false;
+  if (!started) {
+    started = true;
       mutex.lock();
 
       ColorFormat src_color = Colors::stringToColorFormat(v_capture_mode->getSelection().c_str());
@@ -366,14 +367,14 @@ bool CaptureSpinnaker::copyAndConvertFrame(const RawImage & src, RawImage & targ
         // cv::Mat midMat(target.getHeight(), target.getWidth(), CV_8UC3, target.getData());
         cv::Mat midMat = srcMat.clone();
         cv::Mat dstMat(target.getHeight(), target.getWidth(), CV_8UC3, target.getData());
-        // cv::Mat intrinsic_mat(this->cameraMatrix), new_intrinsic_mat;
-        this->intrinsic_mat.copyTo(this->new_intrinsic_mat);
-        this->new_intrinsic_mat.at<double>(0, 0) *= 0.5;
-        this->new_intrinsic_mat.at<double>(1, 1) *= 0.5;
-        this->new_intrinsic_mat.at<double>(0, 2) = 0.5 * srcMat.cols; 
-        this->new_intrinsic_mat.at<double>(1, 2) = 0.5 * srcMat.rows;
-        this->size =  srcMat.size();
-        fisheye::initUndistortRectifyMap(this->cameraMatrix, this->distCoeffs, cv::Matx33d::eye(), this->new_intrinsic_mat, this->size, CV_16SC2, this->map1, this->map2 );
+        cv::Mat intrinsic_mat(this->cameraMatrix), new_intrinsic_mat;
+        intrinsic_mat.copyTo(new_intrinsic_mat);
+        new_intrinsic_mat.at<double>(0, 0) *= 0.5;
+        new_intrinsic_mat.at<double>(1, 1) *= 0.5;
+        new_intrinsic_mat.at<double>(0, 2) = 0.5 * srcMat.cols; 
+        new_intrinsic_mat.at<double>(1, 2) = 0.5 * srcMat.rows;
+        size =  srcMat.size();
+        cv::fisheye::initUndistortRectifyMap(this->cameraMatrix, this->distCoeffs, cv::Matx33d::eye(), new_intrinsic_mat, size, CV_16SC2, this->map1, this->map2 );
 
         cv::fisheye::undistortImage(srcMat, midMat, this->cameraMatrix, this->distCoeffs,new_intrinsic_mat);
         cvtColor(midMat, dstMat, cv::COLOR_BayerBG2RGB);
@@ -410,20 +411,19 @@ bool CaptureSpinnaker::copyAndConvertFrame(const RawImage & src, RawImage & targ
       target = src;
     } else if(src_color == COLOR_RAW8 && out_color == COLOR_RGB8) {
   
-  
+      
       target.ensure_allocation(out_color, src.getWidth(), src.getHeight());
       cv::Mat srcMat(src.getHeight(), src.getWidth(), CV_8UC1, src.getData());
-      // cv::Mat midMat(target.getHeight(), target.getWidth(), CV_8UC3, target.getData());
       cv::Mat midMat = srcMat.clone();
       cv::Mat dstMat(target.getHeight(), target.getWidth(), CV_8UC3, target.getData());
-      // cv::Mat intrinsic_mat(this->cameraMatrix), new_intrinsic_mat;
-      // intrinsic_mat.copyTo(new_intrinsic_mat);
-      // new_intrinsic_mat.at<double>(0, 0) *= 0.5;
-      // new_intrinsic_mat.at<double>(1, 1) *= 0.5;
-      // new_intrinsic_mat.at<double>(0, 2) = 0.5 * srcMat.cols; 
-      // new_intrinsic_mat.at<double>(1, 2) = 0.5 * srcMat.rows;
-      // cv::fisheye::undistortImage(srcMat, midMat, this->cameraMatrix, this->distCoeffs, this->new_intrinsic_mat);
-      cv::remap(srcMat, midMat, this->map1, this->map2, INTER_LINEAR, BORDER_CONSTANT);
+      cv::Mat intrinsic_mat(this->cameraMatrix), new_intrinsic_mat;
+      intrinsic_mat.copyTo(new_intrinsic_mat);
+      new_intrinsic_mat.at<double>(0, 0) *= 0.5;
+      new_intrinsic_mat.at<double>(1, 1) *= 0.5;
+      new_intrinsic_mat.at<double>(0, 2) = 0.5 * srcMat.cols; 
+      new_intrinsic_mat.at<double>(1, 2) = 0.5 * srcMat.rows;
+
+      cv::remap(srcMat, midMat, this->map1, this->map2, cv::INTER_LINEAR, cv::BORDER_CONSTANT);
 
       cvtColor(midMat, dstMat, cv::COLOR_BayerBG2RGB);
     } else {
